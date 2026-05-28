@@ -3,7 +3,6 @@
 'use strict';
 
 const LS_CART = 'zdravie_cart_v1';
-const MIN_ORDER_AMOUNT = 10000;
 const CATALOG_POLL_MS = 5000;
 const API = {
   catalog: 'api/catalog.php',
@@ -27,6 +26,7 @@ let currentConfig = Object.assign({}, DEFAULT_CONFIG);
 let csrfToken = '';
 let catalogUpdatedAt = '';
 let pollingStarted = false;
+let backendAvailable = true;
 
 const FALLBACK_PRODUCTS = [
   {
@@ -477,12 +477,12 @@ function normalizeProduct(row, index){
   };
 }
 function setUpdatedText(text){ const el=$('lastUpdated'); if(el) el.textContent = text; }
-function formatUpdated(source, value){
+function formatUpdated(value){
   const d = value ? new Date(value) : null;
   const ts = d && !Number.isNaN(d.getTime())
     ? d.toLocaleString('ru-RU',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'})
     : new Date().toLocaleString('ru-RU',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'});
-  return (source ? source + ' · ' : '') + 'Обновлено: ' + ts;
+  return 'Прайс-лист обновлен: ' + ts;
 }
 function getConfig(){ return Object.assign({}, DEFAULT_CONFIG, currentConfig); }
 async function saveConfig(cfg){
@@ -495,31 +495,33 @@ async function saveConfig(cfg){
 function updateProducts(nextProducts, source, updatedAt){
   products = nextProducts.map(normalizeProduct).filter(Boolean);
   if(!products.length) products = FALLBACK_PRODUCTS.map(normalizeProduct).filter(Boolean);
-  if(updatedAt) setUpdatedText(formatUpdated(source || 'База данных', updatedAt));
+  if(updatedAt) setUpdatedText(formatUpdated(updatedAt));
   else if(source) setUpdatedText(source);
   renderAll();
 }
-function applyCatalog(data, source){
+function applyCatalog(data){
   if(data.csrf) csrfToken = data.csrf;
   if(data.config){ currentConfig = Object.assign({}, DEFAULT_CONFIG, data.config); applyConfig(); }
   if(Object.prototype.hasOwnProperty.call(data, 'admin')) authed = !!data.admin;
   catalogUpdatedAt = data.updatedAt || catalogUpdatedAt;
-  updateProducts(data.products || [], source || 'База данных', catalogUpdatedAt);
+  updateProducts(data.products || [], '', catalogUpdatedAt);
 }
 async function initProducts(){
   try{
     const data = await apiRequest(API.catalog);
-    applyCatalog(data, 'База данных');
+    backendAvailable = true;
+    applyCatalog(data);
     startCatalogPolling();
     return;
   }catch(e){
+    backendAvailable = false;
     console.warn('PHP API недоступен, fallback:', e);
   }
   try{
     const res = await fetch('data/products.json', {cache:'no-store'});
     if(!res.ok) throw new Error('products.json loading failed');
     const rows = await res.json();
-    updateProducts(rows, 'JSON-файл', new Date().toISOString());
+    updateProducts(rows, '', new Date().toISOString());
   }catch(e){
     console.warn('products.json недоступен, fallback:', e);
     products = FALLBACK_PRODUCTS.map(normalizeProduct).filter(Boolean);
@@ -537,7 +539,7 @@ async function refreshCatalog(){
     const oldUpdatedAt = catalogUpdatedAt;
     const data = await apiRequest(API.catalog);
     if(data.updatedAt !== oldUpdatedAt){
-      applyCatalog(data, 'База данных');
+      applyCatalog(data);
       if(oldUpdatedAt) toast('Прайс обновлён');
     }else{
       if(data.config){ currentConfig = Object.assign({}, DEFAULT_CONFIG, data.config); applyConfig(); }
@@ -613,7 +615,7 @@ function renderTable(){
     return `<tr class="${p.inStock?'':'out-of-stock'}"><td><div class="pcell"><div class="pimg">${escapeHTML(p.emoji||CATEGORY_EMOJI[p.category]||'📦')}</div><div><div class="pname">${escapeHTML(p.name)}</div><div class="ppack">${escapeHTML(p.packaging)}</div></div></div></td><td><span class="catbadge">${escapeHTML(p.category)}</span></td><td><div class="ctry"><span class="ctry-flag">${escapeHTML(p.flag)}</span><span class="ctry-name">${escapeHTML(p.origin||'—')}</span></div></td><td><span class="sbadge ${p.inStock?'yes':'no'}">${p.inStock?'● В наличии':'○ Нет в наличии'}</span></td><td><div class="pricecell">${money(p.price)}<br><span class="punit">/ ${escapeHTML(p.unit)}</span></div></td><td style="text-align:center">${controls}</td></tr>`;
   }).join('');
 }
-function renderAll(){ renderTabs(); renderTable(); updateBadge(); renderAdminCategoryFilter(); }
+function renderAll(){ renderTabs(); renderTable(); updateBadge(); renderAdminCategoryFilter(); if($('tList')?.style.display !== 'none') renderAdminList(); }
 function saveCart(){ saveJSON(LS_CART, cart); }
 function cartSummary(){ let total=0, count=0; Object.entries(cart).forEach(([id,qty])=>{ const p=products.find(x=>x.id===id); if(p){ total += p.price*qty; count += qty; }}); return {total,count}; }
 function updateBadge(){ const s=cartSummary(); ['cartCount','floatBadge'].forEach(id=>{ const el=$(id); if(el){ el.textContent=s.count; el.classList.toggle('show', s.count>0); }}); }
@@ -631,19 +633,13 @@ function renderCart(){
   body.innerHTML=ids.map(id=>{ const p=products.find(x=>x.id===id); if(!p) return ''; const q=cart[id]; return `<div class="ci"><div class="ci-e">${escapeHTML(p.emoji||CATEGORY_EMOJI[p.category]||'📦')}</div><div class="ci-inf"><div class="ci-nm">${escapeHTML(p.name)}</div><div class="ci-ct">${escapeHTML(p.category)} · ${escapeHTML(p.unit)}</div></div><div class="ciq"><button class="ciq-b" onclick="cqR('${escapeHTML(id)}')">−</button><div class="ciq-v">${q}</div><button class="ciq-b" onclick="cqA('${escapeHTML(id)}')">+</button></div><div class="ci-pr">${money(p.price*q)}</div><button class="ci-rm" onclick="cDel('${escapeHTML(id)}')">✕</button></div>`; }).join('');
   const s=cartSummary(); $('cTotVal').textContent=money(s.total); $('cTotItems').textContent=s.count+' позиций'; foot.style.display='block';
 }
-window.openOrder=function(){ buildPreview(); $('orderOv').classList.add('on'); updateOrderWarning(); };
+window.openOrder=function(){ buildPreview(); $('orderOv').classList.add('on'); };
 window.closeOrder=function(){ $('orderOv').classList.remove('on'); };
 function buildPreview(){
   const rows=[]; let total=0;
   Object.entries(cart).forEach(([id,qty])=>{ const p=products.find(x=>x.id===id); if(!p) return; const sum=p.price*qty; total+=sum; rows.push(`<div class="op-row"><span>${escapeHTML(p.emoji||'')} ${escapeHTML(p.name)} × ${qty} ${escapeHTML(p.unit)}</span><span>${money(sum)}</span></div>`); });
   rows.push(`<div class="op-row"><span>Предварительная сумма:</span><span>${money(total)}</span></div>`);
   const el=$('orderPrev'); if(el) el.innerHTML=rows.join('');
-}
-function updateOrderWarning(){
-  const warn=$('orderWarn'); if(!warn) return;
-  const s=cartSummary();
-  if(s.total && s.total < MIN_ORDER_AMOUNT){ warn.textContent='Сумма ниже минимального заказа 10 000 ₽. Можно отправить заявку, менеджер отдельно подтвердит условия.'; warn.classList.add('on'); }
-  else { warn.textContent=''; warn.classList.remove('on'); }
 }
 function phoneIsValid(phone){ return phone.replace(/\D/g,'').length >= 10; }
 function formValue(id){ const el=$(id); return el ? el.value.trim() : ''; }
@@ -667,7 +663,6 @@ function buildOrderText(){
   let i=1;
   Object.entries(cart).forEach(([id,qty])=>{ const p=products.find(x=>x.id===id); if(!p) return; const sum=p.price*qty; total+=sum; lines.push(`${i++}. ${p.name} — ${qty} ${p.unit} × ${money(p.price)} = ${money(sum)}`); });
   lines.push('', `Предварительная сумма: ${money(total)}`);
-  if(total < MIN_ORDER_AMOUNT) lines.push(`Комментарий по сумме: ниже минимального заказа ${money(MIN_ORDER_AMOUNT)}, требуется подтверждение менеджера.`);
   if(comment) lines.push('', 'Комментарий:', comment);
   return lines.join('\n');
 }
@@ -685,13 +680,21 @@ function downloadBlob(content, filename, type){ const a=document.createElement('
 window.toggleMobileNav=function(){ $('mobileNav')?.classList.toggle('open'); $('menuToggle')?.classList.toggle('open'); };
 window.closeMobileNav=function(){ $('mobileNav')?.classList.remove('open'); $('menuToggle')?.classList.remove('open'); };
 window.openAdmin=async function(){
+  if(!backendAvailable){
+    alert('Админка с базой данных работает только на PHP-хостинге. GitHub Pages показывает статическую версию сайта без PHP/MySQL.');
+    return;
+  }
   $('adminOv').classList.add('on');
   document.body.style.overflow='hidden';
   try{
     const data = await apiRequest(API.auth);
     authed = !!data.admin;
   }catch(e){
+    backendAvailable = false;
+    alert('PHP API недоступен. Для админки нужен хостинг с PHP и MySQL/phpMyAdmin.');
+    window.closeAdmin();
     console.warn('Не удалось проверить сессию:', e);
+    return;
   }
   authed ? showAdmin() : showPwd();
 };
@@ -718,7 +721,15 @@ window.logoutAdmin=async function(){
   showPwd();
   toast('Вы вышли из админки');
 };
-window.aTab=function(tab, btn){ document.querySelectorAll('.atab').forEach(b=>b.classList.remove('on')); btn.classList.add('on'); const map={list:'tList',add:'tAdd',cfg:'tCfg',bkp:'tBkp'}; Object.values(map).forEach(id=>$(id).style.display='none'); $(map[tab]).style.display='block'; if(tab==='list') renderAdminList(); if(tab==='cfg') fillSettings(); };
+window.aTab=function(tab, btn){
+  document.querySelectorAll('.atab').forEach(b=>b.classList.remove('on'));
+  btn.classList.add('on');
+  const map={list:'tList',add:'tAdd',cfg:'tCfg',bkp:'tBkp'};
+  Object.values(map).forEach(id=>$(id).style.display='none');
+  $(map[tab]).style.display='block';
+  if(tab==='list') renderAdminList();
+  if(tab==='cfg') fillSettings();
+};
 function renderAdminCategoryFilter(){ const sel=$('aCatF'); if(!sel) return; const old=sel.value || 'all'; sel.innerHTML='<option value="all">Все</option>'+categories().map(c=>`<option value="${escapeHTML(c)}">${escapeHTML(c)}</option>`).join(''); sel.value=old; }
 window.rAList=function(){ renderAdminList(); };
 function renderAdminList(){
@@ -727,8 +738,24 @@ function renderAdminList(){
   if(adminQuery){ const q=adminQuery.toLowerCase(); arr=arr.filter(p=>[p.name,p.category,p.origin].some(v=>String(v||'').toLowerCase().includes(q))); }
   const cnt=$('aCnt'); if(cnt) cnt.textContent=`Позиций: ${products.length}, показано: ${arr.length}`;
   if(!arr.length){ list.innerHTML='<p style="text-align:center;padding:20px;color:var(--light)">Нет позиций</p>'; return; }
-  list.innerHTML=arr.map(p=>`<div class="arow"><div class="ae">${escapeHTML(p.emoji||CATEGORY_EMOJI[p.category]||'📦')}</div><div class="ai"><div class="an">${escapeHTML(p.name)}</div><div class="ac">${escapeHTML(p.category)} · ${escapeHTML(p.flag)} ${escapeHTML(p.origin)} · ${p.inStock?'В наличии':'Нет'}</div></div><div class="ap">${money(p.price)}/${escapeHTML(p.unit)}</div><button class="bed" onclick="openEdit('${escapeHTML(p.id)}')">✏</button><button class="bdd" onclick="delP('${escapeHTML(p.id)}')">✕</button></div>`).join('');
+  list.innerHTML=arr.map(p=>`<div class="arow"><div class="ae">${escapeHTML(p.emoji||CATEGORY_EMOJI[p.category]||'📦')}</div><div class="ai"><div class="an">${escapeHTML(p.name)}</div><div class="ac">${escapeHTML(p.category)} · ${escapeHTML(p.flag)} ${escapeHTML(p.origin)} · ${p.inStock?'В наличии':'Нет'}</div></div><div class="ap"><input class="admin-price-input" type="number" min="0" step="0.01" value="${Number(p.price)}" data-original="${Number(p.price)}" oninput="markInlinePrice(this)" onkeydown="if(event.key==='Enter')saveInlinePrice('${escapeHTML(p.id)}',this)"><span>/${escapeHTML(p.unit)}</span><button class="price-save" onclick="saveInlinePrice('${escapeHTML(p.id)}',this.parentElement.querySelector('.admin-price-input'))">✓</button></div><button class="bed" onclick="openEdit('${escapeHTML(p.id)}')">✏</button><button class="bdd" onclick="delP('${escapeHTML(p.id)}')">✕</button></div>`).join('');
 }
+window.markInlinePrice=function(input){
+  const original=Number(input.dataset.original);
+  const current=Number(String(input.value).replace(',','.'));
+  input.classList.toggle('changed', Number.isFinite(current) && current !== original);
+};
+window.saveInlinePrice=async function(id, input){
+  const price=Number(String(input.value).replace(',','.'));
+  if(!Number.isFinite(price) || price < 0){ alert('Проверьте цену'); return; }
+  const original=Number(input.dataset.original);
+  if(price === original){ toast('Цена не изменилась'); return; }
+  try{
+    const data=await apiRequest(API.products, {method:'POST', body:{action:'update_prices', prices:[{id, price}]}});
+    applyCatalog(data);
+    toast('✅ Цена сохранена');
+  }catch(e){ alert(e.message || 'Не удалось сохранить цену'); }
+};
 function productPayload(prefix, includeId){
   const payload = {
     name: formValue(prefix+'Nm'),
@@ -749,7 +776,7 @@ window.addProd=async function(){
   if(!payload.name || !Number.isFinite(payload.price)){ alert('Заполните название и цену'); return; }
   try{
     const data = await apiRequest(API.products, {method:'POST', body:payload});
-    applyCatalog(data, 'База данных');
+    applyCatalog(data);
     ['fNm','fPr','fPk','fOr','fFl','fEm'].forEach(id=>{ if($(id)) $(id).value=''; });
     if($('fSt')) $('fSt').checked=true;
     toast('✅ Позиция добавлена');
@@ -761,7 +788,7 @@ window.delP=async function(id){
     const data = await apiRequest(API.products, {method:'DELETE', body:{id}});
     delete cart[id];
     saveCart();
-    applyCatalog(data, 'База данных');
+    applyCatalog(data);
     toast('Позиция удалена');
   }catch(e){ alert(e.message || 'Не удалось удалить товар'); }
 };
@@ -772,7 +799,7 @@ window.saveEdit=async function(){
   if(!payload.id || !payload.name || !Number.isFinite(payload.price)){ alert('Проверьте название и цену'); return; }
   try{
     const data = await apiRequest(API.products, {method:'PUT', body:payload});
-    applyCatalog(data, 'База данных');
+    applyCatalog(data);
     window.closeEdit();
     toast('✅ Сохранено');
   }catch(e){ alert(e.message || 'Не удалось сохранить товар'); }
@@ -801,7 +828,7 @@ window.impData=function(input){
       if(confirm('Импортировать '+list.length+' позиций?')){
         if(data.config) await saveConfig(data.config);
         const response = await apiRequest(API.products, {method:'POST', body:{action:'replace', products:list}});
-        applyCatalog(response, 'База данных');
+        applyCatalog(response);
         toast('✅ Импорт выполнен');
       }
     }catch(err){ alert(err.message || 'Ошибка файла или неверный формат'); }
@@ -815,7 +842,6 @@ function bind(){
   $('sortSelect')?.addEventListener('change', e=>{ currentSort=e.target.value; renderTable(); });
   $('adminSearch')?.addEventListener('input', e=>{ adminQuery=e.target.value; renderAdminList(); });
   ['adminOv','orderOv','editOv'].forEach(id=>{ const el=$(id); if(el) el.addEventListener('click', e=>{ if(e.target===el){ if(id==='adminOv') window.closeAdmin(); else if(id==='orderOv') window.closeOrder(); else window.closeEdit(); }}); });
-  ['oName','oPhone','oPerson','oAddress','oDelivery','oType','oComment','oContract','oVat','oDocs'].forEach(id=>{ const el=$(id); if(el) el.addEventListener('input', updateOrderWarning); });
 }
 function debounce(fn, ms){ let timer; return (...args)=>{ clearTimeout(timer); timer=setTimeout(()=>fn(...args),ms); }; }
 

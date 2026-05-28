@@ -20,6 +20,46 @@ handle_api_errors(function (): void {
 
     if ($method === 'POST') {
         $data = read_json_body();
+        if (($data['action'] ?? '') === 'update_prices') {
+            $prices = $data['prices'] ?? [];
+            if (!is_array($prices)) {
+                throw new InvalidArgumentException('Передайте массив цен');
+            }
+
+            $pdo->beginTransaction();
+            try {
+                $stmt = $pdo->prepare('UPDATE products SET price = :price WHERE id = :id');
+                foreach ($prices as $row) {
+                    if (!is_array($row)) {
+                        continue;
+                    }
+                    $id = trim((string) ($row['id'] ?? ''));
+                    $priceText = str_replace(',', '.', trim((string) ($row['price'] ?? '')));
+                    if ($id === '' || $priceText === '' || !is_numeric($priceText)) {
+                        throw new InvalidArgumentException('Проверьте цены перед сохранением');
+                    }
+                    $price = (float) $priceText;
+                    if ($price < 0) {
+                        throw new InvalidArgumentException('Цена не может быть отрицательной');
+                    }
+                    $stmt->execute([
+                        ':id' => $id,
+                        ':price' => $price,
+                    ]);
+                }
+                $updatedAt = touch_catalog($pdo);
+                $pdo->commit();
+            } catch (Throwable $e) {
+                $pdo->rollBack();
+                throw $e;
+            }
+
+            success_response([
+                'products' => list_products($pdo),
+                'updatedAt' => $updatedAt,
+            ]);
+        }
+
         if (($data['action'] ?? '') === 'replace') {
             $rows = $data['products'] ?? [];
             if (!is_array($rows)) {

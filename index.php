@@ -15,7 +15,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;0,600;1,400;1,600&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/style.css">
+<link rel="stylesheet" href="css/style.css?v=20260528-1">
 </head>
 <body>
 
@@ -145,7 +145,6 @@
       </div>
       <div class="cattabs" id="categoryTabs"></div>
     </div>
-    <div class="min-order-note">ℹ️ Минимальная сумма заказа — от 10 000 ₽. Цены и наличие предварительные, менеджер подтвердит их перед доставкой.</div>
     <div class="tbl-outer">
       <table class="ptbl">
         <thead>
@@ -174,10 +173,10 @@
     <div class="footer-contacts">
       <a id="maxBtnF" href="#" class="big-btn bmax-big" target="_blank">
         <span style="display:inline-flex;align-items:center;justify-content:center;background:#fff;color:#7B2FFF;font-family:Arial,sans-serif;font-size:11px;font-weight:900;border-radius:4px;padding:2px 6px;line-height:1.2">MAX</span>
-        Написать в MAX
+        MAX
       </a>
-      <a id="tgBtnF" href="#" class="big-btn btg-big" target="_blank"><svg width="14" height="14" fill="currentColor" viewBox="0 0 24 24"><path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm5.562 8.248-1.97 9.289c-.145.658-.537.818-1.084.508l-3-2.21-1.447 1.394c-.16.16-.295.295-.605.295l.213-3.053 5.56-5.023c.242-.213-.054-.333-.373-.12L7.16 14.48l-2.95-.924c-.64-.204-.654-.64.136-.951l11.527-4.445c.535-.194 1.003.131.69 1.088z"/></svg> Написать в Telegram</a>
-      <a id="waBtnF" href="#" class="big-btn bwa-big" target="_blank"><svg width="14" height="14" fill="currentColor" viewBox="0 0 24 24"><path d="M12.031 6.172c-3.181 0-5.767 2.586-5.768 5.766-.001 1.298.38 2.27 1.019 3.287l-.582 2.128 2.182-.573c.978.58 1.911.928 3.145.929 3.178 0 5.767-2.587 5.768-5.766.001-3.187-2.575-5.771-5.764-5.771zm3.392 8.244c-.144.405-.837.774-1.17.824-.299.045-.677.063-1.092-.069-.252-.08-.575-.187-.988-.365-1.739-.751-2.874-2.502-2.961-2.617-.087-.116-.708-.94-.708-1.793s.448-1.273.607-1.446c.159-.173.346-.217.462-.217l.332.006c.106.005.249-.04.39.298.144.347.491 1.2.534 1.287.043.087.072.188.014.304-.058.116-.087.188-.173.289l-.26.304c-.087.086-.177.18-.076.354.101.174.449.741.964 1.201.662.591 1.221.774 1.394.86s.274.072.376-.043c.101-.116.433-.506.549-.68.116-.173.231-.145.39-.087s1.011.477 1.184.564.289.129.332.202c.043.073.043.423-.101.827z"/></svg> Написать в WhatsApp</a>
+      <a id="tgBtnF" href="#" class="big-btn btg-big" target="_blank"><svg width="14" height="14" fill="currentColor" viewBox="0 0 24 24"><path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm5.562 8.248-1.97 9.289c-.145.658-.537.818-1.084.508l-3-2.21-1.447 1.394c-.16.16-.295.295-.605.295l.213-3.053 5.56-5.023c.242-.213-.054-.333-.373-.12L7.16 14.48l-2.95-.924c-.64-.204-.654-.64.136-.951l11.527-4.445c.535-.194 1.003.131.69 1.088z"/></svg> Telegram</a>
+      <a id="waBtnF" href="#" class="big-btn bwa-big" target="_blank"><svg width="14" height="14" fill="currentColor" viewBox="0 0 24 24"><path d="M12.031 6.172c-3.181 0-5.767 2.586-5.768 5.766-.001 1.298.38 2.27 1.019 3.287l-.582 2.128 2.182-.573c.978.58 1.911.928 3.145.929 3.178 0 5.767-2.587 5.768-5.766.001-3.187-2.575-5.771-5.764-5.771zm3.392 8.244c-.144.405-.837.774-1.17.824-.299.045-.677.063-1.092-.069-.252-.08-.575-.187-.988-.365-1.739-.751-2.874-2.502-2.961-2.617-.087-.116-.708-.94-.708-1.793s.448-1.273.607-1.446c.159-.173.346-.217.462-.217l.332.006c.106.005.249-.04.39.298.144.347.491 1.2.534 1.287.043.087.072.188.014.304-.058.116-.087.188-.173.289l-.26.304c-.087.086-.177.18-.076.354.101.174.449.741.964 1.201.662.591 1.221.774 1.394.86s.274.072.376-.043c.101-.116.433-.506.549-.68.116-.173.231-.145.39-.087s1.011.477 1.184.564.289.129.332.202c.043.073.043.423-.101.827z"/></svg> WhatsApp</a>
       <a href="#" class="admin-link" onclick="openAdmin();return false;">⚙ Управление прайсом</a>
     </div>
   </div>
@@ -206,10 +205,9 @@
 <!-- ORDER MODAL -->
 <div class="modal-ov" id="orderOv">
   <div class="modal">
-    <div class="modal-hdr"><h2>Оформление заявки</h2><button class="modal-x" onclick="closeOrder()">✕</button></div>
+      <div class="modal-hdr"><h2>Оформление заявки</h2><button class="modal-x" onclick="closeOrder()">✕</button></div>
     <div class="modal-body">
       <div class="om-preview" id="orderPrev"></div>
-      <div class="order-warning" id="orderWarn"></div>
       <div class="omfg"><label>Название заведения / компания *</label><input type="text" id="oName" placeholder="Кафе Солнышко / ООО Ромашка" autocomplete="organization"></div>
       <div class="omfg"><label>Контактное лицо</label><input type="text" id="oPerson" placeholder="Иван Петров" autocomplete="name"></div>
       <div class="omfg"><label>Телефон *</label><input type="tel" id="oPhone" placeholder="+7 (XXX) XXX-XX-XX" autocomplete="tel"></div>
@@ -259,7 +257,7 @@
         <button class="atab" onclick="logoutAdmin()">Выйти</button>
       </div>
       <div class="adm-body">
-        <div id="tList"><div class="admin-note">Админка сохраняет товары в MySQL-базу. Изменения сразу видны на сайте и автоматически обновляются у открытых посетителей.</div>
+        <div id="tList">
           <div class="ah"><span id="aCnt"></span><select id="aCatF" onchange="rAList()"><option value="all">Все категории</option></select></div>
           <div class="admin-search-wrap"><svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg><input type="text" class="admin-sinput" id="adminSearch" placeholder="Поиск по названию или категории..."></div>
           <div class="alist-wrap"><div class="alist" id="aList"></div></div>
@@ -333,6 +331,6 @@
 
 <div class="toast" id="toast"></div>
 
-<script src="js/app.js"></script>
+<script src="js/app.js?v=20260528-1"></script>
 </body>
 </html>
